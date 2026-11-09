@@ -3,8 +3,8 @@ name: CI/CD for Bid Frontend
 on:
   push:
     branches: [main] # ["**"]
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 concurrency:
   group: release-${{ github.ref }}
@@ -73,7 +73,7 @@ jobs:
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            cd ./alpha &&
+            cd ./bid &&
             export IMAGE_TAG=${{ github.sha }} &&
             docker compose pull &&
             docker compose up -d &&
