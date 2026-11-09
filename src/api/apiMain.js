@@ -3,17 +3,11 @@ import axios from "axios";
 
 export const mainApi = axios.create({
   baseURL: "/api",
+  // "http://localhost:3000/api"
   headers: {
     "Content-Type": "application/json",
   },
 });
-
-// export const mainApi = axios.create({
-//   baseURL: "http://localhost:3000/api",
-//   headers: {
-//     "Content-Type": "application/json",
-//   },
-// });
 
 mainApi.interceptors.request.use((config) => {
   const token = useUserStore.getState().token;
