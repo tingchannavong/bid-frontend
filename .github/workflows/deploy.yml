@@ -3,8 +3,8 @@ name: CI/CD for Bid Frontend
 on:
   push:
     branches: [main] # ["**"]
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 concurrency:
   group: release-${{ github.ref }}
