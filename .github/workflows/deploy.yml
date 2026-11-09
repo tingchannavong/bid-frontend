@@ -1,0 +1,80 @@
+name: CI/CD for Bid Frontend
+
+on:
+  push:
+    branches: [main] # ["**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # test:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+  #     - run: npm ci
+  #     - run: npm test
+
+  build-push:
+    # needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      
+      - uses: cycjimmy/semantic-release-action@v4
+        id: release
+        with:
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+            push: true
+            tags: |
+                ghcr.io/${{ github.repository }}:${{ github.sha }}
+                ghcr.io/${{ github.repository }}:latest
+                ${{ steps.release.outputs.new_release_published == 'true' && format('ghcr.io/{0}:{1}', github.repository, steps.release.outputs.new_release_version) || '' }}
+
+  deploy:
+    needs: build-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: SSH into droplet and redeploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            cd ./alpha &&
+            export IMAGE_TAG=${{ github.sha }} &&
+            docker compose pull &&
+            docker compose up -d &&
+            docker image prune -f
